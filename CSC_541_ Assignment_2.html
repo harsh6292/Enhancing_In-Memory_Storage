@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<!-- saved from url=(0063)http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/index.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta http-equiv="X-UA-Compatible" context="IE=9">
+<meta charset="UTF-8">
+
+<!-- JQuery package --->
+
+<script type="text/javascript" src="./CSC_541_ Assignment_2_files/jquery-1.9.1.min.js"></script><style type="text/css"></style>
+
+<!-- Google Code hyphenator -->
+
+<script type="text/javascript" src="./CSC_541_ Assignment_2_files/hyphenate.js"></script>
+
+<!-- Google fonts stuff -->
+
+<link rel="stylesheet" type="text/css" href="./CSC_541_ Assignment_2_files/css">
+<link rel="stylesheet" type="text/css" href="./CSC_541_ Assignment_2_files/css(1)">
+<link rel="stylesheet" type="text/css" href="./CSC_541_ Assignment_2_files/css(2)">
+
+<!-- Course page CSS and JS -->
+
+<link type="text/css" href="./CSC_541_ Assignment_2_files/course.css" rel="stylesheet">
+<script type="text/javascript" src="./CSC_541_ Assignment_2_files/mod-date.js"></script>
+
+
+<title>CSC 541: Assignment 2</title>
+</head>
+
+<body bgcolor="white" class="hyphenate">
+
+<div style="text-align: center;">
+<span style="
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  max-width: 1200px;
+  height: 300px;
+  background-image: url( &#39;../hdd.png&#39; );
+  background-repeat: no-repeat;
+">
+<div style="
+  position: absolute;
+  align: left;
+  text-align: left;
+  top: 40px;
+  left: 10px;
+  font-family: &#39;Trebuchet MS&#39;, Helvetica, sans-serif;
+  font-size: 16pt;
+  font-weight: normal;
+  color: black;
+  filter: alpha(opacity=80);
+  opacity: .8;
+">
+  <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/index.html">CSC 541</a><br>
+  As­sign­ment 2
+  <div style="padding-top: .3em; font-size: 10pt;">
+    In-Mem­ory In­dex­ing with Avail­abil­ity Lists
+  </div>
+</div>
+<div style="
+  position: absolute;
+  align: left;
+  top: 0px;
+  left: 0px;
+">
+  <a href="http://www.ncsu.edu/">
+  <img src="./CSC_541_ Assignment_2_files/nc-state-logo.png" style="border-style: none">
+  </a>
+</div>
+</span>
+</div>
+
+<!--Spacer after image of one "line"-->
+
+<div style="height: 1em;"></div>
+
+
+<h2>In­tro­duc­tion</h2>
+
+<p>The goals of this as­sign­ment are three-fold:</p>
+
+<ol>
+
+<li>To in­ves­ti­gate the use of field de­lim­iters and record sizes for
+field and record or­ga­ni­za­tion.
+
+</li><li>To build and main­tain an in-mem­ory pri­mary key index to im­prove
+search ef­fi­ciency.
+
+</li><li>To use an in-mem­ory avail­abil­ity list to sup­port the re­al­lo­ca­tion
+of space for records that are deleted.
+
+</li></ol>
+
+<h2>Stu­dent File</h2>
+
+<p>Dur­ing this as­sign­ment you will build and main­tain a sim­ple file of
+stu­dent records. Each record will have four fields: <code>SID</code>
+(stu­dent ID), <code>last</code> (last name), <code>first</code>,
+(first name) and <code>major</code> (pro­gram of study). Fields within
+a record will be vari­able-length, and will be de­lim­ited by
+the <code>|</code> char­ac­ter. For ex­am­ple</p>
+
+<blockquote>
+<code>712412913|Ford|Rob|Phi</code>
+</blockquote>
+
+<p>rep­re­sents a stu­dent with an <code>SID</code> of 712412913,
+a <code>last</code> of Ford, a <code>first</code> of Rob, and
+a <code>major</code> of Phi (Rob Ford is mi­nor­ing in Ethics).</p>
+
+<p><code>SID</code> is the pri­mary key for a stu­dent record. This
+means every in­di­vid­ual stu­dent record will have a
+unique <code>SID</code>.</p>
+
+<p>Records will be vari­able-length, and will be stored one after
+an­other in a bi­nary data file. Each record will be pre­ceded by an
+in­te­ger that de­fines the size of its cor­re­spond­ing record.</p>
+
+<p><b>Note.</b> Read the above de­scrip­tion of the record size
+care­fully! It is stored as bi­nary data in a man­ner sim­i­lar to how
+in­te­ger data were stored and re­trieved in As­sign­ment 1. It is not
+ap­pro­pri­ate to store the size as an ASCII string. For ex­am­ple, if you
+wanted to read a record at file off­set <code>off</code> in a file
+ref­er­enced through a <code>FILE</code> stream <code>fp</code>, it
+would be done as:</p>
+
+<div class="codeblock" style="margin-top: 8px;">
+#in­clude &lt;stdio.h&gt;
+
+char *buf;      /* Buffer to hold stu­dent record */
+FILE *fp;       /* Input/out­put stream */
+long  rec_off;  /* Record off­set */
+int   rec_­siz;  /* Record size, in char­ac­ters */
+
+/*  If student.​db doesn't exist, cre­ate it, oth­er­wise read
+ *  its first record
+ */
+
+if ( ( fp = fopen( "student.​db", "r+b" ) ) == NULL ) {
+  fp = fopen( "student.​db", "w+b" );
+
+} else {
+  rec_off = 0;
+  fseek( fp, rec_off, SEEK_SET );
+  fread( &amp;rec_­siz, sizeof( int ), 1, fp );
+
+  buf = mal­loc( rec_­siz + 1 );
+  fread( buf, 1, rec_­siz, fp );
+  buf[ rec_­siz ] = '\0';
+}
+</div>
+
+<p>Writ­ing a new record uses a sim­i­lar, re­verse pro­ce­dure. First,
+con­vert the record's body into a char­ac­ter buffer with fields
+de­lim­ited by <code>|</code>. Next, seek to the ap­pro­pri­ate po­si­tion in
+the stu­dent file and write an in­te­ger rep­re­sent­ing the buffer's size
+in bytes, in bi­nary, using <code>fwrite()</code>. Fi­nally, write the
+buffer to the file with <code>fwrite()</code>.</p>
+
+
+<h2>Pro­gram Ex­e­cu­tion</h2>
+
+<p>Your pro­gram will be named <code>assn_2</code> and it will run from
+the com­mand line. Two com­mand line ar­gu­ments will be spec­i­fied: an
+avail­abil­ity list order, and the name of the stu­dent file.</p>
+
+<blockquote>
+<code>assn_2 avail-list-order studentfile-name</code>
+</blockquote>
+
+<p>Your pro­gram must sup­port three dif­fer­ent avail­abil­ity list
+or­der­ing strate­gies.</p>
+
+<ol>
+
+<li class="tight"><code>--first-fit&nbsp;&nbsp;</code>Holes in the
+avail­abil­ity list will be saved in the order they are added to the
+list.
+
+</li><li class="tight"><code>--best-fit&nbsp;&nbsp;&nbsp;</code>Holes in
+the avail­abil­ity list will be sorted in as­cend­ing order of hole size.
+
+</li><li class="tight"><code>--worst-fit&nbsp;&nbsp;</code>Holes in the
+avail­abil­ity avail­abil­ity list will be sorted in de­scend­ing order of
+hole size.
+
+</li></ol>
+
+<p>For ex­am­ple, ex­e­cut­ing your pro­gram as fol­lows</p>
+
+<blockquote>
+<code>assn_2 --best-fit student.db</code>
+</blockquote>
+
+<p>would order holes in the avail­abil­ity list in as­cend­ing order of
+hole size, and would use <code>student.db</code> to store records.</p>
+
+<p><b>Note.</b> If you are asked open an ex­ist­ing stu­dent file, you
+can as­sume the avail­abil­ity list order spec­i­fied on the com­mand line
+matches the order that was used when the stu­dent file was first
+cre­ated.</p>
+
+<h2>In-Mem­ory Pri­mary Key Index</h2>
+
+<p>In order to im­prove search ef­fi­ciency, a pri­mary key index will be
+main­tained in mem­ory as a ref­er­ence to each record stored in the
+file. For our records, <code>SID</code> will act as a pri­mary
+key. This means each entry in your index will have a struc­ture sim­i­lar
+to:</p>
+
+<div class="codeblock" style="margin-top: 8px;">
+type­def struct {
+  int key;   /* Record's key */
+  long off;  /* Record's off­set in file */
+} in­dex_S;
+</div>
+
+<p>Index en­tries should be stored in a col­lec­tion that sup­ports di­rect
+ac­cess and dy­namic ex­pan­sion. One good choice is a
+dy­nam­i­cally-ex­pand­able array. Index en­tries must be sorted in
+as­cend­ing key order, with the small­est key is at the front of the
+index and the largest key is at the end. This will allow you to use a
+bi­nary search to find a tar­get key in the index.</p>
+
+<p>The index will not be re-built every time the stu­dent file is
+re-opened. In­stead, it will be main­tained in a per­ma­nent form
+on-disk. As your pro­gram exits, you will write your index to disk,
+sav­ing its con­tents in an index file. When you re-open the stu­dent
+file, you will load the cor­re­spond­ing index file, im­me­di­ately
+re­con­struct­ing your pri­mary key index. The index will have ex­actly the
+same state as be­fore, and will be ready to use to ac­cess records in
+the stu­dent file.</p>
+
+<p>You can use any for­mat you want to store each key–off­set pair
+the index file. The sim­plest ap­proach is to read and write the en­tire
+struc­ture as bi­nary data using <code>fread()</code>
+and <code>fwrite()</code>, for ex­am­ple</p>
+
+<div class="codeblock" style="margin-top: 8px;">
+#in­clude &lt;stdio.h&gt;
+
+type­def struct {
+  int key;   /* Record's key */
+  long off;  /* Record's off­set in file */
+} in­dex_S;
+
+FILE    *out;         /* Out­put file stream */
+in­dex_S  prim[ 50 ];  /* Pri­mary key index */
+
+out = fopen( "index.​bin", "wb" );
+fwrite( prim, sizeof( in­dex_S ), 50, out );
+fclose( out );
+</div>
+
+<p><b>Note.</b> To sim­plify your pro­gram, you can as­sume the pri­mary
+key index will never need to store more than 10,000 key–off­set
+pairs.</p>
+
+
+<h2>In-Mem­ory Avail­abil­ity List</h2>
+
+<p>When records are deleted from the file, rather than clos­ing the
+hole that forms (an ex­pen­sive op­er­a­tion), we will sim­ply record the
+size and the off­set of the hole in an in-mem­ory avail­abil­ity
+list. Each entry in your avail­abil­ity list will have a struc­ture
+sim­i­lar to:</p>
+
+<div class="codeblock" style="margin-top: 8px;">
+type­def struct {
+  int siz;   /* Hole's size */
+  long off;  /* Hole's off­set in file */
+} avail_S;
+</div>
+
+<p><b>Note.</b> To sim­plify your pro­gram, you can as­sume the
+avail­abil­ity list will never need to store more than 10,000
+size–off­set pairs.</p>
+
+<p>The avail­abil­ity list will not be re-built every time the stu­dent
+file is re-opened. In­stead, sim­i­lar to the pri­mary index, it will be
+main­tained in a per­ma­nent form on-disk. As your pro­gram exits, you
+will write your avail­abil­ity list to disk, sav­ing its con­tents in an
+avail­abil­ity list file. When you re-open the stu­dent file, you will
+load the cor­re­spond­ing avail­abil­ity list file, im­me­di­ately
+re­con­struct­ing your avail­abil­ity list.</p>
+
+<p>As noted above, you can as­sume a con­sis­tent avail­abil­ity list order
+for a given stu­dent file. In other words, if you are asked to open an
+ex­ist­ing stu­dent file, the avail­abil­ity list order spec­i­fied on the
+com­mand line will al­ways match the order that was being used when the
+avail­abil­ity list was writ­ten to disk.</p>
+
+<p>When new records are added, we will search the avail­abil­ity list
+for a hole that can hold the new record. If no hole ex­ists, the record
+is ap­pended to the end of the stu­dent file. The order of the en­tries
+in the avail­abil­ity list is de­fined by the avail­abil­ity order
+spec­i­fied on the com­mand line when your pro­gram is run.</p>
+
+
+<h4>First Fit</h4>
+
+<p>If your pro­gram sees the avail­abil­ity
+order <code>--first-fit</code>, it will order en­tries in the
+avail­abil­ity list in first in–first out order. New holes are
+ap­pended to the end of the avail­abil­ity list. When a new record is
+added, a first-fit strat­egy is used to search from the front of the
+avail­abil­ity list until a hole is found that is large enough to hold
+the new record.</p>
+
+<p>If the hole is larger than the new record, the left-over frag­ment
+is saved as a new hole at the end of the avail­abil­ity list.</p>
+
+
+<h4>Best Fit</h4>
+
+<p>If your pro­gram sees the avail­abil­ity
+order <code>--best-fit</code>, it will order en­tries in the
+avail­abil­ity list sorted in as­cend­ing order of hole size. New holes
+are in­serted into the avail­abil­ity list in the proper sorted
+po­si­tion. If mul­ti­ple holes have the same size, the en­tries for these
+holes should be sorted in as­cend­ing order of hole off­set.</p>
+
+<p>When a new record is added, a best-fit strat­egy is used to search
+from the front of the avail­abil­ity list until a hole is found that is
+large enough to hold the new record. Be­cause of how the avail­abil­ity
+list is or­dered, this is the small­est hole that can hold the new
+record.</p>
+
+<p>If the hole is larger than the new record, the left-over frag­ment
+is saved as a new hole at its sorted po­si­tion in the avail­abil­ity
+list.</p>
+
+<p><b>Hint.</b> Use C's <code>qsort()</code> func­tion to sort the
+avail­abil­ity list.</p>
+
+
+<h4>Worst Fit</h4>
+
+<p>If your pro­gram sees the avail­abil­ity
+order <code>--worst-fit</code>, it will order en­tries in the
+avail­abil­ity list sorted in de­scend­ing order of hole size. New holes
+are in­serted into the avail­abil­ity list in the proper sorted
+po­si­tion. If mul­ti­ple holes have the same size, the en­tries for these
+holes should be sorted in as­cend­ing order of hole off­set.</p>
+
+<p>When a new record is added, a worst-fit strat­egy is used to ex­am­ine
+the first entry in the avail­abil­ity list to see if it is large enough
+to hold the new record. Be­cause of how the avail­abil­ity list is
+or­dered, this is the largest hole that can hold the new record.</p>
+
+<p>If the hole is larger than the new record, the left-over frag­ment
+is saved as a new hole at its sorted po­si­tion in the avail­abil­ity
+list.</p>
+
+<p><b>Hint.</b> Use C's <code>qsort()</code> func­tion to sort the
+avail­abil­ity list.</p>
+
+
+<h2>User In­ter­face</h2>
+
+<p>The user will com­mu­ni­cate with your pro­gram through a set of
+com­mands typed at the key­board. Your pro­gram must sup­port four sim­ple
+com­mands:</p>
+
+<ul>
+
+<li><code>add key rec</code><br>
+
+Adds a new record <code>rec</code> with an <code>SID</code>
+of <code>key</code> to the stu­dent file. The for­mat
+of <code>rec</code> is a <code>|</code>-de­lim­ited set of fields
+(ex­actly as de­scribed in Stu­dent File sec­tion above), for ex­am­ple
+
+<div class="codeblock" style="left: 4%; margin-top: 0px; margin-bottom: 8px;">
+<code>add 712412913 712412913|Ford|Rob|Phi</code>
+</div>
+
+adds a new record with an <code>SID</code> of 712412913,
+a <code>last</code> of Ford, a <code>first</code> of Rob, and
+a <code>major</code> of Phi.
+			
+</li><li><code>find key</code><br>
+
+Finds the record with <code>SID</code> of <code>key</code> in the
+stu­dent file, if it ex­ists. The record should be printed
+in <code>|</code>-de­lim­ited for­mat, (ex­actly as de­scribed in Stu­dent
+File sec­tion above), for ex­am­ple
+
+<div class="codeblock" style="left: 4%; margin-top: 0px; margin-bottom: 8px;">
+<code>find 712412913</code>
+</div>
+
+should print on-screen
+
+<div class="codeblock" style="left: 4%; margin-top: 0px; margin-bottom: 8px;">
+<code>712412913|Ford|Rob|Phi</code>
+</div>
+
+</li><li><code>del key</code><br>
+
+Delete the record with <i>SID</i> of <code>key</code> from the stu­dent
+file, if it ex­ists.
+
+</li><li><code>end</code><br>
+
+End the pro­gram, close the stu­dent file, and write the index and
+avail­abil­ity lists to the cor­re­spond­ing index and avail­abil­ity files.
+
+</li></ul>
+
+
+<h4>Add</h4>
+
+<p>To add a new record to the stu­dent file</p>
+
+<ol>
+
+<li>Bi­nary search the index for an entry with a key value equal to the
+new <code>rec</code>'s <code>SID</code>. If such an entry ex­ists,
+then <code>rec</code> has the same pri­mary key as a record al­ready in
+the stu­dent file. Write
+
+<blockquote>
+<code>Record with SID=key exists</code>
+</blockquote>
+
+on-screen, and ig­nore the add re­quest, since this is not al­lowed. If
+the user wants to up­date an al­ready-ex­ist­ing record, they must first
+delete it, then re-add it.
+
+</li><li>Search the avail­abil­ity list for a hole that can hold
+hold <code>rec</code> plus the record size in­te­ger that pre­cedes it.
+
+<div style="margin-top: 6px;">
+If a hole is found, re­move it from the avail­abil­ity list, and
+write <code>rec</code>'s size and body to the hole's off­set. If the
+hole is big­ger than <code>rec</code> plus its record size in­te­ger,
+there will be a frag­ment left at the end of the hole. Add the frag­ment
+back to the avail­abil­ity list as a new, smaller hole.
+</div>
+
+<div style="margin-top: 6px;">
+If no ap­pro­pri­ately-sized hole exist in the avail­abil­ity list,
+ap­pend <code>rec</code>'s size and body to the end of the stu­dent
+file.
+</div>
+
+</li><li>Re­gard­less of where <code>rec</code> is writ­ten, a new entry must
+be added to the index hold­ing <code>rec</code>'s key and off­set,
+main­tain­ing the index in key-sorted order.
+
+</li></ol>
+
+
+<h4>Find</h4>
+
+<p>To find a record, bi­nary search the index for an entry with a key
+value of <code>key</code>. If an entry is found, use it's off­set to
+lo­cate and read the record, then print the record on-screen.</p>
+
+<p>If no index entry with the given key ex­ists, write</p>
+
+<blockquote>
+<code>No record with SID=key exists</code>
+</blockquote>
+
+<p>on-screen.</p>
+
+
+<h4>Del</h4>
+
+<p>To delete a record, bi­nary search the index for an entry with a key
+value of <code>key</code>.
+
+</p><p>If an entry is found, use the entry's off­set to lo­cate and read the
+size of the record. Since the record is being deleted, it will form a
+hole in the stu­dent file. Add a new entry to the avail­abil­ity list
+con­tain­ing the new hole's lo­ca­tion and size. Re­mem­ber, the size of the
+hole is the size of the record being deleted, plus the size of the
+in­te­ger pre­ced­ing the record. Fi­nally, re­move the entry for the
+deleted record from the index.</p>
+
+<p>If no index entry with the given key ex­ists, print</p>
+
+<blockquote>
+<code>No record with SID=key exists</code>
+</blockquote>
+
+<p>on-screen.</p>
+
+
+<h4>End</h4>
+
+<p>This com­mand ends the pro­gram by clos­ing the stu­dent file, and
+writ­ing the index and avail­abil­ity lists to their cor­re­spond­ing index
+and avail­abil­ity list files.</p>
+
+
+<h2>Pro­gram­ming En­vi­ron­ment</h2>
+
+<p>All pro­grams must be writ­ten in C, and com­piled to run on
+the <code>remote.eos.ncsu.edu</code> Linux server. Any ssh client can
+be used to ac­cess your Unity ac­count and AFS stor­age space on this
+ma­chine.</p>
+
+
+<a name="writing_results"></a>
+<h4>Writ­ing Re­sults</h4>
+
+<p>When your pro­gram ends, you must print the con­tents of your index
+and avail­abil­ity lists. For the index en­tries, print a line con­tain­ing
+the text <code>Index:</code> fol­lowed by one line for each
+key–off­set pair, using the fol­low­ing for­mat.</p>
+
+<blockquote>
+<code>printf( "key=%d: offset=%ld\n", index[i].key, index[i].off );</code>
+</blockquote>
+
+<p>Next, for the avail­abil­ity list en­tries, print a line con­tain­ing
+the text <code>Availability:</code> fol­lowed by one line for each
+size–off­set pair, using the fol­low­ing for­mat.</p>
+
+<blockquote>
+<code>printf( "size=%d: offset=%ld\n", avail[i].siz, avail[i].off );</code>
+</blockquote>
+
+<p>Fi­nally, you must de­ter­mine the num­ber of holes <code>hole_n</code>
+in your avail­abil­ity list, and the total amount of
+space <code>hole_siz</code> oc­cu­pied by all the holes (<i>i.e.</i>,
+the sum of the sizes of each hole). These two val­ues should be printed
+using the fol­low­ing for­mat.</p>
+
+<blockquote>
+<code>printf( "Number of holes: %d\n", hole_n );</code><br>
+<code>printf( "Hole space: %d\n", hole_siz );</code>
+</blockquote>
+
+<p>This will allow you to com­pare the ef­fi­ciency of dif­fer­ent
+avail­abil­ity list or­der­ings to see whether they offer bet­ter or worse
+per­for­mance, in terms of the num­ber of holes they cre­ate, and the
+amount of space they waste within the stu­dent file.</p>
+
+<p>Your as­sign­ment will be run au­to­mat­i­cally, and the out­put it
+pro­duces will be com­pared to known, cor­rect out­put
+using <code>diff</code>. Be­cause of this, <b>your out­put must con­form
+to the above re­quire­ments ex­actly</b>. If it doesn't,
+<code>diff</code> will re­port your out­put as in­cor­rect, and it will be marked
+ac­cord­ingly.</p>
+
+
+<a name="supplemental_material"></a>
+<h2>Sup­ple­men­tal Ma­te­r­ial</h2>
+
+<p>In order to help you test your pro­gram, we pro­vide two input and
+two out­put files. The input files con­tain com­mands for your pro­gram.
+You can use file redi­rec­tion to pass them in as though their con­tents
+were typed at the key­board.</p>
+
+<ul>
+
+<li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/input-01.txt"><code>input-01.txt</code></a>, an input
+file of com­mands ap­plied to an ini­tially empty stu­dent file, and
+
+</li><li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/input-02.txt"><code>input-02.txt</code></a>, an input
+file of com­mands ap­plied to the stu­dent file pro­duced
+by <code>input-01.txt</code>.
+
+</li></ul>
+
+<p>The out­put files show what your pro­gram should print after each
+input file is processed.</p>
+
+<ul>
+
+<li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/output-01-first.txt"><code>output-01-first.txt</code></a>,
+the out­put your pro­gram should pro­duce after it
+processes <code>input-01.txt</code> using <code>--first-fit</code>,
+
+</li><li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/output-02-first.txt"><code>output-02-first.txt</code></a>,
+the out­put your pro­gram should pro­duce after it
+processes <code>input-02.txt</code> using <code>--first-fit</code>,
+
+</li><li style="margin-top:
+6px;"> <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/output-01-best.txt"><code>output-01-best.txt</code></a>,
+the out­put your pro­gram should pro­duce after it
+processes <code>input-01.txt</code> using <code>--best-fit</code>,
+
+</li><li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/output-02-best.txt"><code>output-02-best.txt</code></a>,
+the out­put your pro­gram should pro­duce after it
+processes <code>input-02.txt</code> using <code>--best-fit</code>,
+
+</li><li style="margin-top:
+6px;"><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/output-01-worst.txt"><code>output-01-worst.txt</code></a>,
+the out­put your pro­gram should pro­duce after it
+processes <code>input-01.txt</code> using <code>--worst-fit</code>,
+and
+
+</li><li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/output-02-worst.txt"><code>output-02-worst.txt</code></a>,
+the out­put your pro­gram should pro­duce after it
+processes <code>input-02.txt</code> using <code>--worst-fit</code>.
+
+</li></ul>
+
+<p>For ex­am­ple, to test your pro­gram using <code>--best-fit</code>,
+you would issue the fol­low­ing com­mands:</p>
+
+<div class="codeblock" style="margin-top: 8px;">
+% rm student.​db
+% ass­n_2 --best-fit student.​db &lt; input-01.​txt &gt; my-output-01-best.​txt
+% ass­n_2 --best-fit student.​db &lt; input-02.​txt &gt; my-output-02-best.​txt
+</div>
+
+<p><b>Note:</b> As shown in the ex­am­ple above, you start a "new"
+stu­dent data­base by re­mov­ing any ex­ist­ing stu­dent file. If your
+pro­gram sees the stu­dent file doesn't exist, it can as­sume that the
+index and avail­abil­ity files shouldn't exist, ei­ther. You can han­dle
+this as­sump­tion in any way you want. One sim­ple ap­proach would be to
+open the index and avail­abil­ity files in <code>w+b</code> mode, which
+en­ables read­ing and writ­ing, and au­to­mat­i­cally dis­cards any ex­ist­ing
+files with the same names.
+</p>
+
+<p>You can use <code>diff</code> to com­pare out­put from your pro­gram
+to our out­put files. If your pro­gram is run­ning prop­erly and your
+out­put is for­mat­ted cor­rectly, your pro­gram should pro­duce out­put
+iden­ti­cal to what is in these files.</p>
+
+<p>Please re­mem­ber, the files we're pro­vid­ing here are meant to serve
+as ex­am­ples only. Apart from hold­ing valid com­mands, and the pre­vi­ous
+guar­an­tees of a limit of 10,000 key–off­set and 10,000
+size–off­set pairs, <b>you can­not make any as­sump­tions</b> about
+the con­tent of the input files we will use to test your pro­gram.</p>
+
+<h4>Test Files</h4>
+
+<p>The fol­low­ing files were used to test your pro­gram.</p>
+
+<ul>
+<li><b>Sim­ple Test Case.</b>
+  <ul class="sub">
+  <li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/input-simple.txt"><code>input-simple.txt</code></a>
+  </li><li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-first-fit-simple.txt"><code>output-first-simple.txt</code></a>,
+    <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-best-fit-simple.txt"><code>output-best-simple.txt</code></a>,
+    <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-worst-fit-simple.txt"><code>output-worst-simple.txt</code></a>
+  </li></ul>
+
+</li><li><b>Nor­mal Test Case.</b>
+  <ul class="sub">
+  <li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/input-norm.txt"><code>input-norm.txt</code></a>
+  </li><li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-first-fit-norm.txt"><code>output-first-norm.txt</code></a>,
+    <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-best-fit-norm.txt"><code>output-best-norm.txt</code></a>,
+    <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-worst-fit-norm.txt"><code>output-worst-norm.txt</code></a>
+  </li></ul>
+
+</li><li><b>Multi-Run Test Case.</b>
+  <ul class="sub">
+  <li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/input-01.txt"><code>input-01.txt</code></a>,
+    <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/input-02.txt"><code>input-02.txt</code></a>
+  </li><li><a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-first-fit-01.txt"><code>output-first-01.txt</code></a>,
+    <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-first-fit-02.txt"><code>output-first-02.txt</code></a>,
+    <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-best-fit-01.txt"><code>output-best-01.txt</code></a>,
+    <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-best-fit-02.txt"><code>output-best-02.txt</code></a>,
+    <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-worst-fit-01.txt"><code>output-worst-01.txt</code></a>,
+    <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/test/output-worst-fit-02.txt"><code>output-worst-02.txt</code></a>
+  </li></ul>
+
+</li></ul>
+
+<p>Your pro­gram was run using all three avail­abil­ity list or­der­ing
+strate­gies for the all three test cases. For the multi-run test case
+your pro­gram was first run with the <code>-01</code> input file, then
+run with the <code>-02</code> input file. This was de­signed to test
+your pro­gram's abil­ity to prop­erly in­ter­pret an ex­ist­ing data­base.
+</p>
+
+
+<h2>Hand-In Re­quire­ments</h2>
+
+<p>Use <a href="https://wolfware.ncsu.edu/?term=current&type=complex&what=CSC%20541" target="_blank">Moo­dle</a> (the on­line as­sign­ment sub­mis­sion
+soft­ware) to sub­mit the fol­low­ing files:</p>
+
+<ul>
+
+  <li><code>assn_2</code>, a Linux ex­e­cutable of your fin­ished
+  as­sign­ment, and
+	
+  </li><li>all as­so­ci­ated source code files (these can be called any­thing
+  you want).
+
+</li></ul>
+
+<p>There are four im­por­tant re­quire­ments that your as­sign­ment must
+sat­isfy.</p>
+
+<ol>
+
+  <li>Your ex­e­cutable file must be named ex­actly as shown above. The
+  pro­gram will be run and marked elec­tron­i­cally using a script file,
+  so using a dif­fer­ent name means the ex­e­cutable will not be found,
+  and sub­se­quently will not be marked.
+
+  </li><li>Your pro­gram must be com­piled to run
+  on <code>remote.eos.ncsu.edu</code>. If we can­not run your pro­gram,
+  we will not be able to mark it, and we will be forced to as­sign you
+  a grade of 0.
+
+  </li><li>Your pro­gram must pro­duce out­put that ex­actly matches the for­mat
+  de­scribed in the <a href="http://www.csc.ncsu.edu/faculty/healey/csc541/assn_2/index.html#writing_results">Writ­ing Re­sults</a>
+  sec­tion of this as­sign­ment. If it doesn't, it will not pass our
+  au­to­matic com­par­i­son to known, cor­rect out­put.
+
+  </li><li>You must sub­mit your source code with your ex­e­cutable prior to
+  the sub­mis­sion dead­line. If you do not sub­mit your source code, we
+  can­not MOSS it to check for code sim­i­lar­ity. Be­cause of this, any
+  as­sign­ment that does in­clude source code will be as­signed a grade of
+  0.
+
+</li></ol>
+
+<!-- The mod-date span will be updated by code in course.js -->
+
+<hr class="fig_top">
+<div class="footer">
+  Up­dated <span id="mod-date">08-Oct-14</span></div>
+
+
+
+
+
+<!--  LocalWords:  buf fp siz typedef wb fwrite fclose Phi fopen AFS
+ -->
+<!--  LocalWords:  fseek fread sizeof malloc struct txt Moodle CSC
+ -->
+<!--  LocalWords:  Multi multi
+ -->
+</body></html>
